@@ -1,0 +1,18 @@
+name = "TeeStreams"
+uuid = "c24d529b-c83e-40e0-9fc3-05832c05a0ba"
+version = "1.0.0"
+
+[compat]
+julia = "1.5"
+
+[extras]
+CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
+CodecZstd = "6b39b394-51ab-5f42-8807-6242bab2b4c2"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+SimpleBufferStream = "777ac1f9-54b0-4bf8-805c-2214025038e7"
+Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["CodecZlib", "CodecZstd", "HTTP", "SHA", "SimpleBufferStream", "Tar", "Test"]
