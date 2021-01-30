@@ -1,7 +1,23 @@
 module TeeStreams
 
-export TeeStream, teeopen, teeclose
+export TeeStream
+"""
+```julia
+tee = TeeStream(io::IO...)
+```
 
+Construct a tee stream by wrapping multiple writable IO objects.
+
+```julia
+TeeStream(f::Function, io::IO...) do tee
+    # ...
+end
+```
+
+Construct a tee stream by wrapping multiple writable IO objects and
+call function `f` on the tee. Automatically calls `close` on the tee
+before returning.
+"""
 struct TeeStream{T <: NTuple{<:Any, IO}} <: IO
     streams::T
     opened_idx::Union{<:NTuple{<:Any,Bool}, Nothing}
@@ -11,11 +27,19 @@ struct TeeStream{T <: NTuple{<:Any, IO}} <: IO
         return tee
     end
 end
+
 TeeStream(ios::IO...) = TeeStream{typeof(ios)}(ios)
+function TeeStream(f::Function, ios::IO...)
+    tee = TeeStream(ios...)
+    try
+        f(tee)
+    finally
+        close(tee)
+    end
+end
 
 # See https://docs.julialang.org/en/v1/base/io-network/#Base.unsafe_write
 function Base.unsafe_write(tee::TeeStream, p::Ptr{UInt8}, nb::UInt)
-    # check_writable(tee)
     @sync for s in tee.streams
         @async begin
             # TODO: Is it enough to rely on write locks on each s?
@@ -34,44 +58,24 @@ function Base.write(tee::TeeStream, b::UInt8)
     return 1
 end
 
-maybe_open(io) = io
-maybe_open(io::Tuple) = open(io...)
-function teeopen(args::Union{IO, Tuple}...)
-    opened_idx = ntuple(i -> args[i] isa Tuple, length(args))
-    streams = map(maybe_open, args)
-    return TeeStream{typeof(streams)}(streams, opened_idx)
-end
+"""
+    close(tee::TeeStream)
 
-function teeopen(f::Function, args::Union{IO,Tuple}...)
-    tee = teeopen(args...)
-    try
-        f(tee)
-    finally
-        close(tee)
-        # teeclose(tee)
-    end
-end
-
-function teeclose(tee::TeeStream)
-    if tee.opened_idx === nothing
-        return
-    end
-    for i in 1:length(tee.streams)
-        tee.opened_idx[i] || continue
-        close(tee.streams[i])
-    end
-end
-
+Close all streams wrapped in the tee stream.
+"""
 Base.close(tee::TeeStream) = foreach(close, tee.streams)
-# function Base.close(tee::TeeStream)
-#     for s in tee.streams
-#         close(s)
-#     end
-# end
+
+"""
+    flush(tee::TeeStream)
+
+Flush all streams wrapped in the tee stream.
+"""
 Base.flush(tee::TeeStream) = foreach(flush, tee.streams)
+
 Base.isreadable(tee::TeeStream) = false
 Base.isopen(tee::TeeStream) = all(isopen, tee.streams)
 Base.iswritable(tee::TeeStream) = all(iswritable, tee.streams)
+
 # All streams do not define iswritable reliably so just try and throw if things doesn't work
 # function check_writable(tee::TeeStream)
 #     if !(isopen(tee) && iswritable(tee))
@@ -84,6 +88,36 @@ function check_written(n, m)
     end
     return nothing
 end
+
+
+# maybe_open(io) = io
+# maybe_open(io::Tuple) = open(io...)
+# function teeopen(args::Union{IO, Tuple}...)
+#     opened_idx = ntuple(i -> args[i] isa Tuple, length(args))
+#     streams = map(maybe_open, args)
+#     return TeeStream{typeof(streams)}(streams, opened_idx)
+# end
+
+# function teeopen(f::Function, args::Union{IO,Tuple}...)
+#     tee = teeopen(args...)
+#     try
+#         f(tee)
+#     finally
+#         close(tee)
+#         # teeclose(tee)
+#     end
+# end
+
+# function teeclose(tee::TeeStream)
+#     if tee.opened_idx === nothing
+#         return
+#     end
+#     for i in 1:length(tee.streams)
+#         tee.opened_idx[i] || continue
+#         close(tee.streams[i])
+#     end
+# end
+
 
 end # module
 

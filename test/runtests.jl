@@ -15,16 +15,20 @@ function write_things(io)
     write(s, "hello, file\n"); close(s)
     open(io1 -> write(io, io1), f)
     # Read from external process (Base.Process)
-    write(io, open(`$(Base.julia_cmd()[1]) -e 'println("hello, process")'`))
+    open(`$(Base.julia_cmd()[1]) -e 'println("hello, process")'`) do proc
+        write(io, proc)
+    end
     # print(ln)
     print(io, "hello, "); println(io, "print")
     return io
 end
 
 @testset "TeeStreams" begin
+    # write(::TeeStream, x) for different x and tee'd streams
+
     correct = String(take!(write_things(IOBuffer())))
 
-    # write(::TeeStream, x) for different x and tee'd streams
+    # tee = TeeStream(...)
     iob = IOBuffer()
     ioc = IOContext(IOBuffer())
     f, iof = mktemp()
@@ -43,34 +47,20 @@ end
         @test all(x -> x isa TaskFailedException, err.exceptions)
     end
 
-    mktempdir() do tmpd; f = joinpath(tmpd, "file")
-        # tee = teeopen()
-        ## with teeclose
-        iob = IOBuffer()
-        ioc = IOContext(IOBuffer())
-        tee = teeopen(iob, ioc, (f, "w"))
-        write_things(tee)
-        teeclose(tee)
-        @test String(take!(iob)) == String(take!(ioc.io)) == read(f, String) == correct
-        ## with close
-        iob = IOBuffer()
-        ioc = IOContext(IOBuffer())
-        tee = teeopen(iob, ioc, (f, "w"))
-        write_things(tee)
-        close(tee)
-        @test_throws ArgumentError String(take!(iob))
-        @test_throws ArgumentError String(take!(ioc.io))
-        @test read(f, String) == correct
-
-        # teeopen() do tee
-        iob = IOBuffer()
-        ioc = IOContext(IOBuffer())
-        teeopen(iob, ioc, (f, "w")) do tee
+    # TeeStream(...) do tee
+    mktempdir() do tmpd;
+        f1 = joinpath(tmpd, "file")
+        io1 = open(f1, "w")
+        f2 = joinpath(tmpd, "file2")
+        io2 = open(f2, "w")
+        @test isopen(io1)
+        @test isopen(io2)
+        TeeStream(io1, io2) do tee
             write_things(tee)
         end
-        @test_throws ArgumentError String(take!(iob))
-        @test_throws ArgumentError String(take!(ioc.io))
-        @test read(f, String) == correct
+        @test !isopen(io1)
+        @test !isopen(io2)
+        @test read(f1, String) == read(f2, String) == correct
     end
 
     # Test some integration with other packages
@@ -100,18 +90,18 @@ end
         #                 v                  v
         #            GzipCompressor   ZstdCompressor
 
-        tee = teeopen(
-            (GzipCompressorStream, joinpath(tmpd, "julia.tar.gz"), "w"),
-            (ZstdCompressorStream, joinpath(tmpd, "julia.tar.zst"), "w"),
+        buffer_shasum = BufferStream()
+        buffer_tar = BufferStream()
+        decompressor = GzipDecompressorStream(buffer_tar)
+        tee = TeeStream(buffer_shasum, decompressor)
+        compressors = TeeStream(
+            GzipCompressorStream(open(joinpath(tmpd, "julia.tar.gz"), "w")),
+            ZstdCompressorStream(open(joinpath(tmpd, "julia.tar.zst"), "w")),
         )
-        bs = BufferStream()
-        bs2 = BufferStream()
-        gzd = GzipDecompressorStream(bs2)
-        tee2 = teeopen(bs, gzd)
         @sync begin
-            tar_task = @async Tar.rewrite(bs2, tee)
-            dl_task = @async HTTP.get(url; response_stream=tee2)
-            sha_task = @async bytes2hex(SHA.sha256(bs))
+            dl_task = @async HTTP.get(url; response_stream=tee)
+            sha_task = @async bytes2hex(SHA.sha256(buffer_shasum))
+            tar_task = @async Tar.rewrite(buffer_tar, compressors)
             @test fetch(sha_task) == expected_shasum
         end
     end
