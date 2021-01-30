@@ -4,15 +4,19 @@ Simplify writing to multiple streams at once.
 
 ## Usage
 
+Construct a tee stream by wrapping multiple writable IO objects:
 ```julia
 tee = TeeStream(io::IO...)
+write(tee, ....)
+close(tee) # calls close on all wrapped io
 ```
 
-Construct a tee stream by wrapping multiple writable IO objects.
-
+Construct a tee stream by wrapping multiple writable IO objects,
+call function `f` on the tee, and automatically calls `close` on
+all IO streams:
 ```julia
 TeeStream(f::Function, io::IO...) do tee
-    # ...
+    write(tee, ...)
 end
 ```
 
