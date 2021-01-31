@@ -8,6 +8,7 @@ Construct a tee stream by wrapping multiple writable IO objects:
 ```julia
 tee = TeeStream(io::IO...)
 write(tee, ....)
+flush(tee) # calls flush on all wrapped io
 close(tee) # calls close on all wrapped io
 ```
 
@@ -19,12 +20,6 @@ TeeStream(f::Function, io::IO...) do tee
     write(tee, ...)
 end
 ```
-
-Construct a tee stream by wrapping multiple writable IO objects and
-call function `f` on the tee. Automatically calls `close` on the tee
-before returning.
-
-`close` and `flush` on a tee stream closes/flushes all the wrapped streams.
 
 ### Example: Compress with multiple encodings
 
