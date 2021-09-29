@@ -16,7 +16,7 @@ Construct a tee stream by wrapping multiple writable IO objects,
 call function `f` on the tee, and automatically calls `close` on
 all IO streams:
 ```julia
-TeeStream(f::Function, io::IO...) do tee
+TeeStream(io::IO...) do tee
     write(tee, ...)
 end
 ```
