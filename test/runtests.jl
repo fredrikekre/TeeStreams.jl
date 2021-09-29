@@ -99,7 +99,7 @@ end
             ZstdCompressorStream(open(joinpath(tmpd, "julia.tar.zst"), "w")),
         )
         @sync begin
-            dl_task = @async HTTP.get(url; response_stream=tee)
+            dl_task = @async (HTTP.get(url; response_stream=tee); close(tee))
             sha_task = @async bytes2hex(SHA.sha256(buffer_shasum))
             tar_task = @async Tar.rewrite(buffer_tar, compressors)
             @test fetch(sha_task) == expected_shasum
