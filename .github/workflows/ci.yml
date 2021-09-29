@@ -19,6 +19,11 @@ jobs:
           - 'nightly'
         os:
           - ubuntu-latest
+        include:
+          - os: windows-latest
+            version: '1'
+          - os: macOS-latest
+            version: '1'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
