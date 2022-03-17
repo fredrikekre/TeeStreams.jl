@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 using TeeStreams, Test, SimpleBufferStream, HTTP,
       CodecZlib, CodecZstd, SHA, Tar
 
@@ -35,11 +37,12 @@ end
     bs = BufferStream()
     tee = TeeStream(iob, ioc, iof, bs)
     write_things(tee)
+    flush(tee)
     close(iof); close(bs)
     @test String(take!(iob)) == String(take!(ioc.io)) ==
           read(f, String) == read(bs, String) == correct
+    close(tee)
     try
-        close(tee)
         write_things(tee)
     catch err
         @test err isa CompositeException
@@ -57,6 +60,7 @@ end
         @test isopen(io2)
         TeeStream(io1, io2) do tee
             write_things(tee)
+            flush(tee)
         end
         @test !isopen(io1)
         @test !isopen(io2)

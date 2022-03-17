@@ -1,5 +1,8 @@
 # TeeStreams
 
+[![CI][gh-actions-img]][gh-actions-url]
+[![codecov][codecov-img]][codecov-url]
+
 Simplify writing to multiple streams at once.
 
 ## Usage
@@ -68,3 +71,10 @@ expected_shasum = "f190c938dd6fed97021953240523c9db448ec0a6760b574afd4e9924ab561
 
 download_verify(url, expected_shasum)
 ```
+
+
+[gh-actions-img]: https://github.com/fredrikekre/TeeStreams.jl/actions/workflows/ci.yml/badge.svg?branch=master&event=push
+[gh-actions-url]: https://github.com/fredrikekre/TeeStreams.jl/actions/workflows/ci.yml
+
+[codecov-img]: https://codecov.io/gh/fredrikekre/TeeStreams.jl/branch/master/graph/badge.svg?token=K7C8OASVZR
+[codecov-url]: https://codecov.io/gh/fredrikekre/TeeStreams.jl
