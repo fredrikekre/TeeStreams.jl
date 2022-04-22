@@ -120,6 +120,37 @@ end
 #     end
 # end
 
+# Adapted from Logging2.jl (MIT License: Copyright (c) 2020 Chris Foster)
+# https://github.com/JuliaLogging/Logging2.jl/blob/094eb6619aeaa8815585dbe7f33b4972f9a4ce6b/src/Logging2.jl#L12-L37
+function (redirect_func::Base.RedirectStdStream)(f::Function, io::TeeStream)
+    prev_stream =
+        redirect_func.unix_fd == 1 ? stdout :
+        redirect_func.unix_fd == 2 ? stderr :
+        throw(ArgumentError("Can only redirect stdout and stderr to TeeStream."))
+
+    result = nothing
+
+    rd, rw = redirect_func()
+    try
+        @sync begin
+            try
+                Threads.@spawn write(io, rd) # loops while !eof(rd)
+                result = f()
+            finally
+                # To close the read side of the pipe, we must close *all*
+                # writers. This includes `rw`, but *also* the dup'd fd
+                # created behind the scenes by redirect_func(). (To close
+                # that, must call redirect_func() here with the prev stream.)
+                close(rw)
+                redirect_func(prev_stream)
+            end
+        end
+    finally
+        close(rd)
+    end
+    return result
+end
+
 
 end # module
 
