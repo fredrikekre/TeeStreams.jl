@@ -1,6 +1,6 @@
 name = "TeeStreams"
 uuid = "c24d529b-c83e-40e0-9fc3-05832c05a0ba"
-version = "1.0.0"
+version = "1.1.0"
 
 [compat]
 julia = "1.5"
