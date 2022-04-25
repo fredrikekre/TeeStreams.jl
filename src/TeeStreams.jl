@@ -122,12 +122,23 @@ end
 
 # Adapted from Logging2.jl (MIT License: Copyright (c) 2020 Chris Foster)
 # https://github.com/JuliaLogging/Logging2.jl/blob/094eb6619aeaa8815585dbe7f33b4972f9a4ce6b/src/Logging2.jl#L12-L37
-function (redirect_func::Base.RedirectStdStream)(f::Function, io::TeeStream)
-    prev_stream =
-        redirect_func.unix_fd == 1 ? stdout :
-        redirect_func.unix_fd == 2 ? stderr :
-        throw(ArgumentError("Can only redirect stdout and stderr to TeeStream."))
 
+if VERSION >= v"1.7.0-DEV.254"
+    function (redirect_func::Base.RedirectStdStream)(f::Function, io::TeeStream)
+        prev_stream =
+            redirect_func.unix_fd == 1 ? stdout :
+            redirect_func.unix_fd == 2 ? stderr :
+            throw(ArgumentError("Can only redirect stdout and stderr to TeeStream."))
+        return _redirect_internal(f, io, redirect_func, prev_stream)
+    end
+else
+    Base.redirect_stdout(f::Function, io::TeeStream) =
+        _redirect_internal(f, io, redirect_stdout, stdout)
+    Base.redirect_stderr(f::Function, io::TeeStream) =
+        _redirect_internal(f, io, redirect_stderr, stderr)
+end
+
+function _redirect_internal(f, io, redirect_func, prev_stream)
     result = nothing
 
     rd, rw = redirect_func()
